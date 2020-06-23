@@ -112,7 +112,6 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.submit_btn)
     public void onSubmitBtnClicked() {
-        Bitmap bitmap = ((BitmapDrawable) imgv.getDrawable()).getBitmap();
         //Android api level 23 or higher we need WRITE_EXTERNAL_STORAGE permission to save image to external storage
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
@@ -121,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissions(permission, WRITE_EXTERNAL_STORAGE_CODE);
             } else {
                 try {
-                    saveImage(bitmap);
+                    saveImage();
                     Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
                     Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -129,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             try {
-                saveImage(bitmap);
+                saveImage();
                 Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -137,7 +136,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void saveImage(Bitmap bitmap) throws Exception {
+    private void saveImage() throws Exception {
+        Bitmap bitmap = ((BitmapDrawable) imgv.getDrawable()).getBitmap();
         OutputStream fileOutputStream;
         String time = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                 .format(System.currentTimeMillis());
@@ -217,12 +217,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
-
             case WRITE_EXTERNAL_STORAGE_CODE: {
                 if (grantResults.length > 0 && grantResults[0] ==
                         PackageManager.PERMISSION_GRANTED) {
+                    try {
+                        saveImage();
+                        Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
                 } else {
-                    Toast.makeText(this, "Permission enabled", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
                 }
             }
         }
