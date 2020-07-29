@@ -3,7 +3,6 @@ package eslam.emad.imagesproject;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -37,6 +36,11 @@ import java.util.Locale;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -119,21 +123,33 @@ public class MainActivity extends AppCompatActivity {
                 String[] permission = {Manifest.permission.WRITE_EXTERNAL_STORAGE};
                 requestPermissions(permission, WRITE_EXTERNAL_STORAGE_CODE);
             } else {
-                try {
-                    saveImage();
-                    Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                    Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                }
+                submit();
             }
         } else {
-            try {
-                saveImage();
-                Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
-            } catch (Exception e) {
-                Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+            submit();
         }
+    }
+
+    public void submit() {
+        Completable observable = Completable.fromAction(this::saveImage)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+        observable.subscribe(new CompletableObserver() {
+            @Override
+            public void onSubscribe(Disposable d) {
+                delete();
+            }
+
+            @Override
+            public void onComplete() {
+                Toast.makeText(MainActivity.this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Toast.makeText(MainActivity.this, "ERROR...\n" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void saveImage() throws Exception {
@@ -169,7 +185,6 @@ public class MainActivity extends AppCompatActivity {
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
         fileOutputStream.flush();
         fileOutputStream.close();
-        delete();
     }
 
     public void afterLoad() {
@@ -207,28 +222,21 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (requestCode == RESULT_CAMERA && resultCode == RESULT_OK) {
-//            Bitmap bitmap = BitmapFactory.decodeFile(currentPath);
-//            imgv.setImageBitmap(bitmap);
-            imgv.setImageURI(imageUri);
+            Bitmap bitmap = BitmapFactory.decodeFile(currentPath);
+            imgv.setImageBitmap(bitmap);
+            //imgv.setImageURI(imageUri);
             afterLoad();
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case WRITE_EXTERNAL_STORAGE_CODE: {
-                if (grantResults.length > 0 && grantResults[0] ==
-                        PackageManager.PERMISSION_GRANTED) {
-                    try {
-                        saveImage();
-                        Toast.makeText(this, "Imaged saved successfully", Toast.LENGTH_SHORT).show();
-                    } catch (Exception e) {
-                        Toast.makeText(this, "ERROR... " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
-                }
+        if (requestCode == WRITE_EXTERNAL_STORAGE_CODE) {
+            if (grantResults.length > 0 && grantResults[0] ==
+                    PackageManager.PERMISSION_GRANTED) {
+                submit();
+            } else {
+                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
